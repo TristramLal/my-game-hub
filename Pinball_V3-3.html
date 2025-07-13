@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Pin Ball Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: row; /* Arrange elements horizontally */
+            justify-content: center;
+            align-items: flex-start; /* Align items to the top */
+            gap: 20px; /* Space between game container and leaderboard */
+            min-height: 100vh; /* Use min-height to allow content to expand */
+            background-color: #333;
+            font-family: 'Inter', sans-serif;
+            color: #fff;
+            overflow-x: hidden; /* Prevent horizontal scrolling */
+            overflow-y: auto; /* Allow vertical scrolling if content overflows */
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 800px; /* Increased width for the game area */
+            height: 600px; /* Increased height for the game area */
+            background-color: #000;
+            border: 5px solid #fff;
+            border-radius: 10px;
+            overflow: hidden; /* Keep ball inside */
+            margin-bottom: 20px; /* Space between game and controls */
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5); /* Glowing effect */
+        }
+
+        .ball { /* Changed from #ball to .ball for multiple balls */
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: #FFD700; /* Gold color */
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.8); /* Ball glow */
+        }
+
+        /* Flipper base styles */
+        .flipper {
+            position: absolute;
+            width: 220px; /* Increased Flipper length */
+            height: 15px; /* Flipper thickness */
+            background-color: #4299e1; /* Blue color */
+            border-radius: 5px;
+            bottom: 10px; /* Position from the bottom */
+            box-shadow: 0 0 15px rgba(66, 153, 225, 0.7); /* Flipper glow */
+            transition: transform 0.1s ease-out; /* Smooth rotation transition */
+            z-index: 2; /* Ensure flippers are above the ball */
+        }
+
+        #leftFlipper {
+            left: 20px; /* Positioned slightly in from the left edge */
+            transform-origin: 0% 100%; /* Pivot from bottom-left corner of its own box */
+            transform: rotate(20deg); /* Initial state (down, angled inwards) */
+        }
+
+        #rightFlipper {
+            /* Adjusted calculation to ensure it's correctly placed relative to the right wall */
+            right: 50px; /* Positioned relative to the right edge of the game container */
+            transform-origin: 100% 100%; /* Pivot from bottom-right corner of its own box */
+            transform: rotate(-20deg); /* Initial state (down, angled inwards) */
+        }
+
+        /* Pinball Play Area Elements (Simplified Walls) */
+        .playfield-wall {
+            position: absolute;
+            background-color: #555; /* Dark gray for walls */
+            border: 1px solid #777;
+            border-radius: 5px;
+            z-index: 1; /* Walls behind flippers, above ball */
+        }
+
+        #leftPlayfieldWall {
+            top: 0;
+            left: 0;
+            width: 20px; /* Thickness */
+            height: 100%; /* Full height */
+        }
+
+        #rightPlayfieldWall {
+            top: 0;
+            right: 50px; /* Positioned to the left of the plunger lane */
+            width: 20px; /* Thickness */
+            height: 100%; /* Full height */
+        }
+
+        #topPlayfieldWall {
+            top: 0;
+            left: 0;
+            width: calc(100% - 50px); /* Extends across main playfield */
+            height: 20px; /* Thickness */
+        }
+
+        #plungerLane {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 50px; /* Narrow lane on the right */
+            height: 100%;
+            background-color: #222; /* Darker background for the lane */
+            border-left: 2px solid #555;
+            z-index: 0; /* Behind ball and walls */
+        }
+
+        #plunger {
+            position: absolute;
+            right: 15px; /* Inside plunger lane */
+            bottom: 20px; /* Above flippers */
+            width: 20px;
+            height: 60px;
+            background-color: #68d391; /* Green plunger */
+            border-radius: 5px; /* Reverted to 5px */
+            cursor: pointer;
+            z-index: 3; /* Above all other elements for clicking */
+            transition: transform 0.1s ease-out; /* For plunger animation */
+        }
+
+        #drainArea {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 10px; /* Thin strip at the very bottom */
+            background-color: #8b0000; /* Red for drain */
+            z-index: 0;
+        }
+
+        /* Central Bumper */
+        #centralBumper {
+            position: absolute;
+            width: 180px; /* Increased width */
+            height: 180px; /* Increased height to keep it circular */
+            background-color: #ff00ff; /* Magenta color */
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(255, 0, 255, 0.8);
+            z-index: 1;
+        }
+
+        /* Small Obstacles */
+        .small-bumper {
+            position: absolute;
+            width: 30px; /* Small bumper size */
+            height: 30px;
+            background-color: #00FFFF; /* Cyan color */
+            border-radius: 50%;
+            box-shadow: 0 0 8px rgba(0, 255, 255, 0.7);
+            z-index: 1;
+        }
+
+        #scoreDisplay {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #48bb78; /* Green for score */
+            text-shadow: 0 0 10px rgba(72, 187, 120, 0.7);
+            z-index: 10;
+        }
+
+
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px 40px;
+            border-radius: 10px;
+            font-size: 2em;
+            font-weight: bold;
+            color: #e53e3e; /* Red for game over */
+            display: none; /* Hidden by default */
+            text-align: center;
+            box-shadow: 0 0 25px rgba(229, 62, 62, 0.8);
+            z-index: 100; /* Ensure it's on top */
+        }
+
+        .controls-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            margin-top: 20px; /* Space below game container */
+        }
+
+        #restartBtn { /* Removed #resetLeaderboardBtn */
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #fff;
+            background-color: #48bb78; /* Green for restart */
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            outline: none;
+            display: none; /* Hidden by default */
+        }
+
+        #restartBtn:hover {
+            background-color: #38a169;
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        }
+        #restartBtn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Removed styles for #resetLeaderboardBtn */
+
+        .info-message {
+            font-size: 1rem;
+            color: #cbd5e0;
+            text-align: center;
+        }
+
+        /* Leaderboard styles */
+        #leaderboardContainer {
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            width: 300px; /* Fixed width for leaderboard */
+            display: flex; /* Always visible */
+            flex-direction: column;
+            align-items: center;
+            margin-top: 5px; /* Align with game container top border */
+            min-height: 590px; /* Match game container height minus top border */
+            box-sizing: border-box; /* Include padding and border in width/height */
+        }
+
+        #leaderboardContainer h2 {
+            font-size: 2em;
+            color: #48bb78;
+            margin-bottom: 15px;
+        }
+
+        #leaderboardList {
+            list-style: none;
+            padding: 0;
+            width: 100%;
+        }
+
+        #leaderboardList li {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #555;
+            font-size: 1.1em;
+            color: #cbd5e0;
+        }
+
+        #leaderboardList li:last-child {
+            border-bottom: none;
+        }
+
+        #scoreSubmissionForm {
+            position: absolute; /* Position over the game container */
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            width: 80%;
+            max-width: 350px;
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            z-index: 101; /* Above game over message */
+        }
+
+        #scoreSubmissionForm p {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            color: #fff;
+        }
+
+        #playerNameInput {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #777;
+            background-color: #444;
+            color: #fff;
+            width: calc(100% - 22px); /* Account for padding and border */
+            margin-bottom: 15px;
+            font-size: 1em;
+        }
+
+        #submitScoreBtn {
+            padding: 10px 25px;
+            font-size: 1em;
+            font-weight: 700;
+            color: #fff;
+            background-color: #e53e3e; /* Red for submit */
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            outline: none;
+        }
+
+        #submitScoreBtn:hover {
+            background-color: #c53030;
+            transform: translateY(-2px) scale(1.02);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 1200px) { /* Adjust breakpoint for side-by-side layout */
+            body {
+                flex-direction: column; /* Stack vertically on smaller screens */
+                align-items: center;
+            }
+            #gameContainer {
+                width: 95%; /* Make it fluid on smaller screens */
+                height: 500px; /* Adjusted height for smaller screens */
+            }
+            #leaderboardContainer {
+                width: 95%; /* Make it fluid on smaller screens */
+                margin-top: 20px; /* Add space when stacked */
+                min-height: auto; /* Allow height to adjust */
+            }
+            .flipper {
+                width: 170px; /* Adjust flipper width for smaller screens */
+            }
+            #rightFlipper {
+                right: 50px; /* Adjusted for new flipper width */
+            }
+            #centralBumper {
+                width: 140px; /* Adjust for smaller screens */
+                height: 140px;
+            }
+            .small-bumper {
+                width: 25px;
+                height: 25px;
+            }
+            #gameOver {
+                font-size: 1.5em;
+                padding: 15px 30px;
+            }
+            #restartBtn {
+                padding: 10px 25px;
+                font-size: 1rem;
+            }
+            #leaderboardContainer, #scoreSubmissionForm {
+                width: 90%;
+            }
+        }
+
+        @media (max-width: 550px) { /* Further adjust for very small screens */
+            #gameContainer {
+                height: 400px; /* Further adjusted height for very small screens */
+            }
+            .flipper {
+                width: 140px; /* Further adjust flipper width */
+            }
+            #rightFlipper {
+                right: 50px; /* Adjusted for smaller flipper width */
+            }
+            #centralBumper {
+                width: 100px; /* Further adjust for very small screens */
+                height: 100px;
+            }
+            .small-bumper {
+                width: 20px;
+                height: 20px;
+            }
+            #gameOver {
+                font-size: 1.2em;
+                padding: 10px 20px;
+            }
+            #restartBtn {
+                padding: 8px 20px;
+                font-size: 0.9rem;
+            }
+        }
+
+        /* Styles for the confirmation modal */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 200; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.7); /* Black w/ opacity */
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #2d3748; /* Dark blue-gray */
+            margin: auto;
+            padding: 30px;
+            border: 1px solid #4a5568;
+            width: 80%;
+            max-width: 400px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            color: #fff;
+        }
+
+        .modal-content p {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .modal-button {
+            padding: 10px 25px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .modal-button.yes {
+            background-color: #e53e3e; /* Red for Yes */
+            color: #fff;
+        }
+
+        .modal-button.yes:hover {
+            background-color: #c53030;
+            transform: translateY(-2px);
+        }
+
+        .modal-button.no {
+            background-color: #4a5568; /* Gray for No */
+            color: #fff;
+        }
+
+        .modal-button.no:hover {
+            background-color: #2d3748;
+            transform: translateY(-2px);
+        }
+
+        /* AI Commentator styles (kept for reference, but display: none in HTML) */
+        #aiCommentaryBox {
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(255, 255, 0, 0.5); /* Yellow glow */
+            width: 300px;
+            margin-top: 20px; /* Space from controls */
+            text-align: center;
+            font-size: 1.1em;
+            color: #ffe066; /* Light yellow text */
+            min-height: 50px;
+            display: none; /* HIDDEN */
+            align-items: center;
+            justify-content: center;
+            font-style: italic;
+            position: relative; /* For loading indicator */
+        }
+
+        #aiCommentaryBox.loading::after {
+            content: '...';
+            position: absolute;
+            right: 10px;
+            font-size: 1.5em;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="scoreDisplay">Score: 0</div>
+        <!-- Ball div is now dynamically created by JavaScript -->
+        <div id="leftFlipper" class="flipper"></div>
+        <div id="rightFlipper" class="flipper"></div>
+        <div id="leftPlayfieldWall" class="playfield-wall"></div>
+        <div id="rightPlayfieldWall" class="playfield-wall"></div>
+        <div id="topPlayfieldWall" class="playfield-wall"></div>
+        <div id="plunger"></div>
+        <div id="plungerLane"></div>
+
+        <div id="centralBumper"></div> <!-- Central Bumper -->
+
+        <!-- Small Obstacles -->
+        <div id="smallBumper1" class="small-bumper" style="top: 100px; left: 100px;"></div>
+        <div id="smallBumper2" class="small-bumper" style="top: 150px; left: 300px;"></div>
+        <div id="smallBumper3" class="small-bumper" style="top: 250px; left: 150px;"></div>
+        <div id="smallBumper4" class="small-bumper" style="top: 300px; left: 400px;"></div>
+        <div id="smallBumper5" class="small-bumper" style="top: 180px; left: 550px;"></div>
+        <div id="smallBumper6" class="small-bumper" style="top: 350px; left: 250px;"></div>
+
+
+        <div id="drainArea"></div> <!-- Invisible drain area for game over -->
+        <div id="gameOver">Game Over!</div>
+    </div>
+
+    <div class="controls-area">
+        <button id="restartBtn">Restart Game</button>
+        <!-- Removed Reset Leaderboard Button: <button id="resetLeaderboardBtn">Reset Leaderboard</button> -->
+        <p class="info-message">Use <strong>Arrow Left</strong> key for the left flipper.</p>
+        <p class="info-message">Use <strong>Arrow Right</strong> key for the right flipper.</p>
+        <p class="info-message">Click or tap the green plunger to launch the ball.</p>
+        <p class="info-message">On touch devices, tap and drag horizontally on the game area to control flippers.</p>
+        <!-- Removed AI Commentary Box -->
+    </div>
+
+    <!-- Score Submission Form -->
+    <div id="scoreSubmissionForm">
+        <p>Game Over! Your Score: <span id="finalScore">0</span></p>
+        <input type="text" id="playerNameInput" placeholder="Enter your name" maxlength="15">
+        <button id="submitScoreBtn">Submit Score</button>
+    </div>
+
+    <!-- Leaderboard Display -->
+    <div id="leaderboardContainer">
+        <h2>Leaderboard</h2>
+        <ul id="leaderboardList">
+            <!-- Leaderboard items will be inserted here by JavaScript -->
+            <li>Loading...</li>
+        </ul>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmationModal" class="modal">
+        <div class="modal-content">
+            <p id="modalMessage"></p>
+            <div class="modal-buttons">
+                <button id="confirmYes" class="modal-button yes">Yes</button>
+                <button id="confirmNo" class="modal-button no">No</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase variables (global for this module)
+        let app;
+        let db;
+        let auth;
+        let userId;
+        let appId; // Declare appId here
+
+        // Global game variables (for interaction with game logic)
+        window.firebaseReady = false; // Flag to indicate Firebase is initialized and authenticated
+
+        // Get the reset leaderboard button element (now removed from HTML, so this will be null)
+        // const resetLeaderboardBtn = document.getElementById("resetLeaderboardBtn"); // Removed
+
+        // Initialize Firebase
+        try {
+            // Hardcoded Firebase Config from user's input
+            const firebaseConfig = {
+              apiKey: "AIzaSyASrUkZbSciDC9BnLWfpwO6j573aWtsbBc",
+              authDomain: "game-hub-af102.firebaseapp.com",
+              projectId: "game-hub-af102",
+              storageBucket: "game-hub-af102.firebasestorage.app",
+              messagingSenderId: "760374485837",
+              appId: "1:760374485837:web:606964ccff80a7e41118d04", // This was a typo, corrected last digit from 4 to 1
+              measurementId: "G-WD046XE1QV"
+            };
+
+            appId = firebaseConfig.projectId; // Use projectId as appId for consistency with Firestore path
+
+            if (Object.keys(firebaseConfig).length > 0) {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Call setupLeaderboardListener immediately after db is initialized
+                setupLeaderboardListener();
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        console.log("Firebase authenticated. User ID:", userId);
+                        window.firebaseReady = true;
+                    } else {
+                        // Sign in anonymously if no user is authenticated
+                        try {
+                            // Use signInAnonymously as __initial_auth_token is not provided by user
+                            await signInAnonymously(auth);
+                            console.log("Signed in anonymously.");
+                        } catch (error) {
+                            console.error("Firebase anonymous sign-in failed:", error);
+                        }
+                    }
+                });
+            } else {
+                console.warn("Firebase config not found. Leaderboard will not be available.");
+            }
+        } catch (e) {
+            console.error("Error initializing Firebase:", e);
+        }
+
+        // Function to save score to Firestore
+        async function saveScore(playerName, scoreValue) {
+            if (!window.firebaseReady || !db || !userId || !appId) {
+                console.error("Firebase not ready or missing required data to save score.");
+                return;
+            }
+            try {
+                // Public collection for leaderboard
+                const scoresCollectionRef = collection(db, `artifacts/${appId}/public/data/pinball_scores`);
+                await addDoc(scoresCollectionRef, {
+                    playerName: playerName,
+                    score: scoreValue,
+                    timestamp: new Date(),
+                    userId: userId // Store userId for potential future features
+                });
+                console.log("Score saved successfully!");
+
+                // After saving a new score, trim the leaderboard to the top 3
+                await trimLeaderboardToTopThree();
+
+            } catch (e) {
+                console.error("Error adding document: ", e);
+            }
+        }
+
+        // Function to set up real-time leaderboard listener
+        function setupLeaderboardListener() {
+            if (!db || !appId) { // Removed window.firebaseReady check here
+                console.error("Firestore DB or App ID not available to set up leaderboard listener.");
+                return;
+            }
+            const scoresCollectionRef = collection(db, `artifacts/${appId}/public/data/pinball_scores`);
+            const q = query(scoresCollectionRef, orderBy("score", "desc"), limit(10)); // Top 10 scores for display
+
+            console.log("Attempting to set up Firestore leaderboard listener for path:", `artifacts/${appId}/public/data/pinball_scores`);
+
+            onSnapshot(q, (snapshot) => {
+                console.log("Firestore snapshot received. Number of documents:", snapshot.size);
+                const leaderboardList = document.getElementById('leaderboardList');
+                leaderboardList.innerHTML = ''; // Clear current list
+
+                if (snapshot.empty) {
+                    leaderboardList.innerHTML = '<li>No scores yet. Be the first!</li>';
+                    console.log("Leaderboard snapshot is empty.");
+                    return;
+                }
+
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const listItem = document.createElement('li');
+                    listItem.innerHTML = `<span>${data.playerName}</span><span>${data.score}</span>`;
+                    leaderboardList.appendChild(listItem);
+                });
+                console.log("Leaderboard updated with new scores.");
+            }, (error) => {
+                console.error("Error fetching leaderboard: ", error);
+                leaderboardList.innerHTML = '<li>Error loading leaderboard. Please check console for details.</li>';
+            });
+        }
+
+        // Function to get top scores for comparison
+        async function getTopScores() {
+            if (!window.firebaseReady || !db || !appId) {
+                console.error("Firebase not ready to fetch top scores.");
+                return [];
+            }
+            try {
+                const scoresCollectionRef = collection(db, `artifacts/${appId}/public/data/pinball_scores`);
+                const q = query(scoresCollectionRef, orderBy("score", "desc"), limit(3)); // Get top 3 scores
+                const querySnapshot = await getDocs(q);
+                const topScores = [];
+                querySnapshot.forEach(doc => {
+                    topScores.push(doc.data());
+                });
+                return topScores;
+            }
+            catch (e) {
+                console.error("Error fetching top scores:", e);
+                return [];
+            }
+        }
+
+        // New function to trim the leaderboard to only the top 3 scores
+        async function trimLeaderboardToTopThree() {
+            if (!window.firebaseReady || !db || !appId) {
+                console.error("Firebase not ready or missing required data to trim leaderboard.");
+                return;
+            }
+            try {
+                const scoresCollectionRef = collection(db, `artifacts/${appId}/public/data/pinball_scores`);
+                // Get all scores, ordered by score descending
+                const q = query(scoresCollectionRef, orderBy("score", "desc"));
+                const querySnapshot = await getDocs(q);
+
+                if (querySnapshot.size <= 3) {
+                    console.log("Leaderboard has 3 or fewer entries, no trimming needed.");
+                    return;
+                }
+
+                // Collect documents to delete (all beyond the top 3)
+                const deletePromises = [];
+                for (let i = 3; i < querySnapshot.docs.length; i++) {
+                    const docToDelete = querySnapshot.docs[i];
+                    deletePromises.push(deleteDoc(doc(db, `artifacts/${appId}/public/data/pinball_scores`, docToDelete.id)));
+                }
+
+                await Promise.all(deletePromises);
+                console.log(`Trimmed leaderboard. Deleted ${deletePromises.length} entries.`);
+            } catch (e) {
+                console.error("Error trimming leaderboard: ", e);
+                // No modal here, as this is an internal maintenance function
+            }
+        }
+
+        // Expose functions to the global scope for use by game logic
+        window.saveScore = saveScore;
+        window.setupLeaderboardListener = setupLeaderboardListener;
+        window.getTopScores = getTopScores;
+
+        // --- Confirmation Modal Logic ---
+        let resolveConfirmation;
+        const confirmationModal = document.getElementById('confirmationModal');
+        const modalMessage = document.getElementById('modalMessage');
+        const confirmYesBtn = document.getElementById('confirmYes');
+        const confirmNoBtn = document.getElementById('confirmNo');
+
+        function showConfirmationModal(message, callback) {
+            modalMessage.textContent = message;
+            confirmationModal.style.display = 'flex'; // Use flex to center content
+            return new Promise(resolve => {
+                resolveConfirmation = resolve;
+            }).then(callback); // Execute callback with the resolved value
+        }
+
+        confirmYesBtn.addEventListener('click', () => {
+            confirmationModal.style.display = 'none';
+            if (resolveConfirmation) {
+                resolveConfirmation(true);
+            }
+        });
+
+        confirmNoBtn.addEventListener('click', () => {
+            confirmationModal.style.display = 'none';
+            if (resolveConfirmation) {
+                resolveConfirmation(false);
+            }
+        });
+
+    </script>
+
+    <script>
+        // Get DOM elements
+        let leftFlipper = document.getElementById("leftFlipper");
+        let rightFlipper = document.getElementById("rightFlipper");
+        let gameOverDisplay = document.getElementById("gameOver");
+        let restartBtn = document.getElementById("restartBtn");
+        let gameContainer = document.getElementById("gameContainer");
+        let plunger = document.getElementById("plunger");
+        let leftPlayfieldWall = document.getElementById("leftPlayfieldWall");
+        let rightPlayfieldWall = document.getElementById("rightPlayfieldWall");
+        let topPlayfieldWall = document.getElementById("topPlayfieldWall");
+        let drainArea = document.getElementById("drainArea");
+        let centralBumper = document.getElementById("centralBumper");
+        let scoreDisplay = document.getElementById("scoreDisplay");
+        // Leaderboard elements
+        let scoreSubmissionForm = document.getElementById("scoreSubmissionForm");
+        let finalScoreDisplay = document.getElementById("finalScore");
+        let playerNameInput = document.getElementById("playerNameInput");
+        let submitScoreBtn = document.getElementById("submitScoreBtn");
+        let leaderboardContainer = document.getElementById("leaderboardContainer");
+
+
+        // Get all small bumpers
+        const smallBumpers = [];
+        const smallBumperHitCounts = {}; // New object to track hit counts for each small bumper
+        for (let i = 1; i <= 6; i++) {
+            const bumperElement = document.getElementById(`smallBumper${i}`);
+            smallBumpers.push({ element: bumperElement, id: `smallBumper${i}` });
+            smallBumperHitCounts[`smallBumper${i}`] = 0; // Initialize hit count
+        }
+
+
+        // Game state variables
+        let balls = []; // Array to hold multiple ball objects
+        let gameActive = true; // Flag to control game loop
+        let score = 0; // Score variable
+        let multiBallThresholdsCrossed = 0; // Changed from multiBallTriggered (boolean) to a counter
+        let gameStartedProperly = false; // New flag to track if gameplay has truly begun
+        let lastCommentaryScore = 0; // Track score for commentary triggers
+
+        // Constants for game elements
+        const BALL_SIZE = 20;
+        const FLIPPER_WIDTH = 220;
+        const FLIPPER_HEIGHT = 15;
+        const FLIPPER_BOTTOM_OFFSET = 10;
+        const PLUNGER_LANE_WIDTH = 50;
+        const WALL_THICKNESS = 20;
+        const CENTRAL_BUMPER_SIZE = 180;
+        const SMALL_BUMPER_SIZE = 30;
+
+        const BALL_INITIAL_SPEED = 4; // Decreased from 6 to 4
+        const PLUNGER_LAUNCH_SPEED = 10; // Decreased from 15 to 10
+        const WALL_SPEED_INCREASE_FACTOR = 0; // Reverted: Speed increase factor on wall hit (now 0)
+
+        // Scoring values
+        const CENTRAL_BUMPER_POINTS = 100;
+        const SMALL_BUMPER_POINTS = 20;
+        const SMALL_BUMPER_BONUS_POINTS = 500; // New bonus points
+        const SMALL_BUMPER_HITS_FOR_BONUS = 5; // Hits required for bonus
+        const WALL_HIT_POINTS = 5; // New bonus
+        const FLIPPER_HIT_POINTS = 10; // New bonus
+        const MULTI_BALL_SCORE_THRESHOLD = 3000; // Changed from 1000 to 3000 for multi-ball
+        const COMMENTARY_SCORE_INTERVAL = 200; // Trigger commentary every 200 points
+
+
+        // Flipper angles (degrees)
+        const LEFT_FLIPPER_DOWN_ANGLE = 20;
+        const LEFT_FLIPPER_UP_ANGLE = -60;
+        const RIGHT_FLIPPER_DOWN_ANGLE = -20;
+        const RIGHT_FLIPPER_UP_ANGLE = 60;
+
+        const FLIPPER_ROTATION_SPEED = 8;
+
+        // Object to track pressed keys for smooth movement
+        const keysPressed = {};
+
+        // Flipper current angles
+        let leftFlipperAngle = LEFT_FLIPPER_DOWN_ANGLE;
+        let rightFlipperAngle = RIGHT_FLIPPER_DOWN_ANGLE;
+
+        // Function to create and add a new ball to the game
+        // fromPlunger: true if launched from plunger, false if dropped in (e.g., multi-ball)
+        function spawnBall(fromPlunger = true) {
+            const ballElement = document.createElement('div');
+            ballElement.className = 'ball';
+            gameContainer.appendChild(ballElement);
+
+            const newBall = {
+                id: Date.now() + Math.random(), // Unique ID for the ball
+                dx: 0,
+                dy: 0,
+                speed: BALL_INITIAL_SPEED, // Each ball has its own speed
+                isActive: false, // Starts inactive by default
+                element: ballElement
+            };
+
+            if (fromPlunger) {
+                newBall.x = gameContainer.offsetWidth - (PLUNGER_LANE_WIDTH / 2) - (BALL_SIZE / 2);
+                newBall.y = gameContainer.offsetHeight - (FLIPPER_HEIGHT + 50);
+                newBall.isActive = false; // Remains inactive until plunger is clicked
+            } else {
+                // For multi-ball: drop from top-ish of the main playfield
+                // Ensure x is within main playfield boundaries (excluding plunger lane)
+                const playfieldWidth = gameContainer.offsetWidth - PLUNGER_LANE_WIDTH - (WALL_THICKNESS * 2);
+                newBall.x = WALL_THICKNESS + (Math.random() * playfieldWidth);
+                newBall.y = WALL_THICKNESS + BALL_SIZE; // Drop from near the top wall
+                newBall.isActive = true; // Immediately active
+                newBall.dy = newBall.speed / 2; // Initial downward velocity
+                newBall.dx = (Math.random() - 0.5) * (newBall.speed / 4); // Small random horizontal drift
+                gameStartedProperly = true; // Mark game as started for multi-ball as well
+                console.log(`Multi-ball ${newBall.id} dropped in.`);
+            }
+
+            balls.push(newBall);
+            console.log(`Ball ${newBall.id} spawned. Total balls: ${balls.length}`);
+
+            // Position the new ball element
+            newBall.element.style.left = newBall.x + "px";
+            newBall.element.style.top = newBall.y + "px";
+        }
+
+        // Function to initialize or reset the game
+        function initializeGame() {
+            console.log("Initializing game...");
+            // Remove all existing balls from DOM and array
+            balls.forEach(ball => ball.element.remove());
+            balls = [];
+
+            score = 0;
+            updateScoreDisplay();
+            multiBallThresholdsCrossed = 0; // Reset multi-ball counter
+            gameStartedProperly = false; // Reset the game start flag
+            lastCommentaryScore = 0; // Reset commentary score tracker
+
+            // Reset small bumper hit counts
+            for (const bumperId in smallBumperHitCounts) {
+                smallBumperHitCounts[bumperId] = 0;
+            }
+
+            spawnBall(true); // Spawn the first ball, from plunger
+
+            // Reset flipper angles
+            leftFlipperAngle = LEFT_FLIPPER_DOWN_ANGLE;
+            rightFlipperAngle = RIGHT_FLIPPER_DOWN_ANGLE;
+
+            // Apply initial flipper rotations
+            leftFlipper.style.transform = `rotate(${leftFlipperAngle}deg)`;
+            rightFlipper.style.transform = `rotate(${rightFlipperAngle}deg)`;
+
+            // Hide game over message, restart button, score submission form
+            gameOverDisplay.style.display = "none";
+            restartBtn.style.display = "none";
+            scoreSubmissionForm.style.display = "none";
+
+            gameActive = true; // Keep game loop running to allow plunger interaction
+            console.log("Game active. Starting game loop.");
+            gameLoop();
+
+            // Set central bumper position to be at the bottom, just above the flippers
+            centralBumper.style.top = (gameContainer.offsetHeight - FLIPPER_BOTTOM_OFFSET - FLIPPER_HEIGHT - CENTRAL_BUMPER_SIZE - 20) + "px"; /* Adjusted to be above flippers */
+            centralBumper.style.left = ((gameContainer.offsetWidth - PLUNGER_LANE_WIDTH) / 2 - CENTRAL_BUMPER_SIZE / 2) + "px";
+
+        }
+
+        // Function to update the score display
+        function updateScoreDisplay() {
+            scoreDisplay.textContent = `Score: ${score}`;
+
+            // Multi-ball trigger: check if a new 3000-point threshold has been crossed
+            const currentThresholds = Math.floor(score / MULTI_BALL_SCORE_THRESHOLD);
+            if (currentThresholds > multiBallThresholdsCrossed) {
+                const newBallsToSpawn = currentThresholds - multiBallThresholdsCrossed; // Number of new balls to spawn
+                console.log(`Score crossed threshold ${currentThresholds}! Spawning ${newBallsToSpawn} new ball(s).`);
+                for (let i = 0; i < newBallsToSpawn; i++) {
+                    spawnBall(false); // Spawn new balls to drop from the top
+                }
+                multiBallThresholdsCrossed = currentThresholds; // Update the counter
+            }
+        }
+
+        // Function to handle circular bumper collision
+        function handleBumperCollision(ballObj, bumperInfo, bumperSize, bounceForceMultiplier, points) {
+            const bumperElement = bumperInfo.element;
+            const bumperId = bumperInfo.id; // Get the ID for tracking hits
+
+            const gameContainerRect = gameContainer.getBoundingClientRect();
+            const bumperRect = bumperElement.getBoundingClientRect();
+            const bumperRelativeRect = {
+                centerX: (bumperRect.left - gameContainerRect.left) + bumperSize / 2,
+                centerY: (bumperRect.top - gameContainerRect.top) + bumperSize / 2
+            };
+
+            const ballCenterX = ballObj.x + BALL_SIZE / 2;
+            const ballCenterY = ballObj.y + BALL_SIZE / 2;
+
+            const distanceX = ballCenterX - bumperRelativeRect.centerX;
+            const distanceY = ballCenterY - bumperRelativeRect.centerY;
+            const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
+
+            if (distance < (BALL_SIZE / 2 + bumperSize / 2)) {
+                score += points;
+
+                // Check if this is a small bumper for bonus logic
+                if (bumperId && smallBumperHitCounts.hasOwnProperty(bumperId)) {
+                    smallBumperHitCounts[bumperId]++;
+                    console.log(`${bumperId} hit count: ${smallBumperHitCounts[bumperId]}`);
+                    if (smallBumperHitCounts[bumperId] >= SMALL_BUMPER_HITS_FOR_BONUS) {
+                        score += SMALL_BUMPER_BONUS_POINTS;
+                        console.log(`BONUS! ${SMALL_BUMPER_BONUS_POINTS} points for hitting ${bumperId} ${SMALL_BUMPER_HITS_FOR_BONUS} times!`);
+                        smallBumperHitCounts[bumperId] = 0; // Reset hit count after bonus
+                    }
+                }
+
+                updateScoreDisplay();
+
+                const angle = Math.atan2(distanceY, distanceX);
+                const bounceForce = ballObj.speed * bounceForceMultiplier; // Use ball's current speed for bounce force
+                ballObj.dx = Math.cos(angle) * bounceForce;
+                ballObj.dy = Math.sin(angle) * bounceForce;
+
+                const overlap = (BALL_SIZE / 2 + bumperSize / 2) - distance;
+                ballObj.x += (distanceX / distance) * overlap;
+                ballObj.y += (distanceY / distance) * overlap;
+            }
+        }
+
+
+        // Function to move the ball and handle collisions
+        function moveBall() {
+            if (!gameActive) return;
+
+            // Flipper Rotation Logic (applies globally, not per ball)
+            if (keysPressed['ArrowLeft']) {
+                leftFlipperAngle = Math.max(LEFT_FLIPPER_UP_ANGLE, leftFlipperAngle - FLIPPER_ROTATION_SPEED);
+            } else {
+                leftFlipperAngle = Math.min(LEFT_FLIPPER_DOWN_ANGLE, leftFlipperAngle + FLIPPER_ROTATION_SPEED);
+            }
+            leftFlipper.style.transform = `rotate(${leftFlipperAngle}deg)`;
+
+            if (keysPressed['ArrowRight']) {
+                rightFlipperAngle = Math.min(RIGHT_FLIPPER_UP_ANGLE, rightFlipperAngle + FLIPPER_ROTATION_SPEED);
+            } else {
+                rightFlipperAngle = Math.max(RIGHT_FLIPPER_DOWN_ANGLE, rightFlipperAngle - FLIPPER_ROTATION_SPEED);
+            }
+            rightFlipper.style.transform = `rotate(${rightFlipperAngle}deg)`;
+
+            // Iterate through all active balls
+            let activeBallsCount = 0;
+            balls.forEach(ball => {
+                if (!ball.isActive) return; // Skip inactive balls
+                activeBallsCount++;
+
+                // Apply gravity
+                ball.dy += 0.2;
+
+                // Update ball position
+                ball.x += ball.dx;
+                ball.y += ball.dy;
+
+                // Collision with Playfield Walls
+                const mainPlayfieldRightEdge = gameContainer.offsetWidth - PLUNGER_LANE_WIDTH;
+
+                // Left Wall
+                if (ball.x < WALL_THICKNESS) {
+                    ball.dx = -ball.dx;
+                    ball.x = WALL_THICKNESS;
+                    // No speed increase on wall hit
+                    score += WALL_HIT_POINTS; updateScoreDisplay();
+                }
+
+                // Right Wall (separating playfield from plunger lane)
+                if (ball.x + BALL_SIZE > mainPlayfieldRightEdge - WALL_THICKNESS) {
+                    ball.dx = -ball.dx;
+                    ball.x = mainPlayfieldRightEdge - WALL_THICKNESS - BALL_SIZE;
+                    // No speed increase on wall hit
+                    score += WALL_HIT_POINTS; updateScoreDisplay();
+                }
+
+                // Top Wall
+                if (ball.y < WALL_THICKNESS) {
+                    ball.dy = -ball.dy;
+                    ball.y = WALL_THICKNESS;
+                    // No speed increase on wall hit
+                    score += WALL_HIT_POINTS; updateScoreDisplay();
+                }
+
+                // Flipper Collision Detection (Simplified)
+                const leftFlipperRect = leftFlipper.getBoundingClientRect();
+                const rightFlipperRect = rightFlipper.getBoundingClientRect();
+                const gameContainerRect = gameContainer.getBoundingClientRect();
+
+                const leftFlipperRelativeRect = {
+                    left: leftFlipperRect.left - gameContainerRect.left,
+                    right: leftFlipperRect.right - gameContainerRect.left,
+                    top: leftFlipperRect.top - gameContainerRect.top,
+                    bottom: leftFlipperRect.bottom - gameContainerRect.top,
+                    width: leftFlipperRect.width,
+                    height: leftFlipperRect.height
+                };
+                const rightFlipperRelativeRect = {
+                    left: rightFlipperRect.left - gameContainerRect.left,
+                    right: rightFlipperRect.right - gameContainerRect.left,
+                    top: rightFlipperRect.top - gameContainerRect.top,
+                    bottom: rightFlipperRect.bottom - gameContainerRect.top,
+                    width: rightFlipperRect.width,
+                    height: rightFlipperRect.height
+                };
+
+                // Check collision with Left Flipper
+                if (
+                    ball.y + BALL_SIZE >= leftFlipperRelativeRect.top &&
+                    ball.y <= leftFlipperRelativeRect.bottom &&
+                    ball.x + BALL_SIZE > leftFlipperRelativeRect.left &&
+                    ball.x < leftFlipperRelativeRect.right &&
+                    leftFlipperAngle < (LEFT_FLIPPER_DOWN_ANGLE - (LEFT_FLIPPER_DOWN_ANGLE - LEFT_FLIPPER_UP_ANGLE) / 4)
+                ) {
+                    ball.dy = -(Math.abs(ball.dy) + 2);
+                    const hitPoint = (ball.x + BALL_SIZE / 2 - (leftFlipperRelativeRect.left + leftFlipperRelativeRect.width / 2)) / (leftFlipperRelativeRect.width / 2);
+                    ball.dx = hitPoint * (ball.speed * 2); // Use ball's current speed for flipper bounce
+                    ball.y = leftFlipperRelativeRect.top - BALL_SIZE;
+                    score += FLIPPER_HIT_POINTS; updateScoreDisplay();
+                }
+
+                // Check collision with Right Flipper
+                if (
+                    ball.y + BALL_SIZE >= rightFlipperRelativeRect.top &&
+                    ball.y <= rightFlipperRelativeRect.bottom &&
+                    ball.x + BALL_SIZE > rightFlipperRelativeRect.left &&
+                    ball.x < rightFlipperRelativeRect.right &&
+                    rightFlipperAngle > (RIGHT_FLIPPER_DOWN_ANGLE + (RIGHT_FLIPPER_UP_ANGLE - RIGHT_FLIPPER_DOWN_ANGLE) / 4)
+                ) {
+                    ball.dy = -(Math.abs(ball.dy) + 2);
+                    const hitPoint = (ball.x + BALL_SIZE / 2 - (rightFlipperRelativeRect.left + rightFlipperRelativeRect.width / 2)) / (rightFlipperRelativeRect.width / 2);
+                    ball.dx = hitPoint * (ball.speed * 2); // Use ball's current speed for flipper bounce
+                    ball.y = rightFlipperRelativeRect.top - BALL_SIZE;
+                    score += FLIPPER_HIT_POINTS; updateScoreDisplay();
+                }
+
+                // Central Bumper Collision
+                handleBumperCollision(ball, { element: centralBumper, id: 'centralBumper' }, CENTRAL_BUMPER_SIZE, 1.5, CENTRAL_BUMPER_POINTS);
+
+                // Small Bumpers Collision
+                for (const bumper of smallBumpers) {
+                    handleBumperCollision(ball, bumper, SMALL_BUMPER_SIZE, 1.2, SMALL_BUMPER_POINTS);
+                }
+
+                // Ball goes into the drain area (Game Over for this ball)
+                const drainRect = drainArea.getBoundingClientRect();
+                const drainRelativeRect = {
+                    top: drainRect.top - gameContainerRect.top,
+                    bottom: drainRect.bottom - gameContainerRect.top,
+                    left: drainRect.left - gameContainerRect.left,
+                    right: drainRect.right - gameContainerRect.left,
+                };
+
+                if (
+                    ball.y + BALL_SIZE > drainRelativeRect.top &&
+                    ball.x + BALL_SIZE > drainRelativeRect.left &&
+                    ball.x < drainRelativeRect.right
+                ) {
+                    ball.isActive = false; // Deactivate this ball
+                    ball.element.style.display = 'none'; // Hide the ball
+                    console.log(`Ball ${ball.id} drained.`);
+                }
+
+                // Apply new positions to DOM element
+                ball.element.style.left = ball.x + "px";
+                ball.element.style.top = ball.y + "px";
+            });
+
+            // Check if all balls are inactive AND game has properly started (Game Over)
+            const allBallsDrained = balls.every(ball => !ball.isActive);
+            if (gameStartedProperly && allBallsDrained) { // Modified condition
+                console.log("All balls drained. Game Over.");
+                gameOverDisplay.style.display = "block";
+                restartBtn.style.display = "block";
+                gameActive = false;
+                showScoreSubmission();
+            }
+        }
+
+        // Main game loop
+        function gameLoop() {
+            moveBall();
+            if (gameActive) {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // Event listener for keyboard input
+        document.addEventListener("keydown", function (event) {
+            if (!gameActive) return;
+
+            // Prevent default scrolling for arrow keys
+            if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+                event.preventDefault();
+            }
+
+            keysPressed[event.key] = true;
+        });
+
+        document.addEventListener("keyup", function (event) {
+            if (!gameActive) return;
+            keysPressed[event.key] = false;
+        });
+
+        // Event listener for restart button
+        restartBtn.addEventListener("click", initializeGame);
+
+        // Plunger click/tap event
+        plunger.addEventListener('click', () => {
+            console.log("Plunger clicked.");
+            // Find the first inactive ball in the plunger lane
+            const ballToLaunch = balls.find(ball => !ball.isActive && ball.x > (gameContainer.offsetWidth - PLUNGER_LANE_WIDTH - BALL_SIZE));
+
+            if (ballToLaunch && gameActive) { // Ensure game is active before launching
+                ballToLaunch.dy = -PLUNGER_LAUNCH_SPEED;
+                ballToLaunch.dx = (Math.random() < 0.5 ? 1 : -1) * (ballToLaunch.speed / 2); // Use ball's current speed
+                ballToLaunch.isActive = true;
+                ballToLaunch.element.style.display = 'block'; // Ensure ball is visible
+                gameStartedProperly = true; // Set flag when the first ball is launched
+                console.log(`Ball ${ballToLaunch.id} launched. Game started properly.`);
+            } else if (!gameActive) {
+                console.log("Plunger click ignored: Game not active.");
+            } else {
+                console.log("No inactive balls found in plunger lane to launch.");
+            }
+        });
+
+        // Touch controls for flippers
+        let touchStartX = 0;
+
+        gameContainer.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (!gameActive) return;
+            touchStartX = e.touches[0].clientX;
+            if (touchStartX < gameContainer.offsetWidth / 2) {
+                keysPressed['ArrowLeft'] = true; // Simulate left arrow key press
+            } else {
+                keysPressed['ArrowRight'] = true; // Simulate right arrow key press
+            }
+        }, { passive: false });
+
+        gameContainer.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (!gameActive) return;
+            // Optionally, you could add logic here for more nuanced touch control,
+            // e.g., if a swipe determines which flipper to activate.
+            // For now, it just prevents default scrolling.
+        }, { passive: false });
+
+        gameContainer.addEventListener('touchend', (e) => {
+            if (!gameActive) return;
+            keysPressed['ArrowLeft'] = false; // Release left arrow key
+            keysPressed['ArrowRight'] = false; // Release right arrow key
+        });
+
+        // Function to show score submission form
+        async function showScoreSubmission() {
+            finalScoreDisplay.textContent = score;
+
+            // Fetch current top scores
+            const topScores = await window.getTopScores(); // Using the globally exposed function
+
+            let canSubmit = false;
+            // Only allow submission if there are less than 3 scores OR current score is higher than the lowest of the top 3
+            if (topScores.length < 3) {
+                canSubmit = true;
+            } else if (topScores.length > 0 && score > topScores[topScores.length - 1].score) { // Check topScores.length to avoid error if empty
+                canSubmit = true;
+            }
+
+            if (canSubmit) {
+                scoreSubmissionForm.style.display = 'flex';
+                playerNameInput.value = '';
+                playerNameInput.focus();
+            } else {
+                scoreSubmissionForm.style.display = 'none';
+                // Display a message to the user that their score was not high enough
+                showConfirmationModal(`Your score of ${score} was not high enough to make the top 3. Try again!`, () => {});
+            }
+        }
+
+        // Function to submit score
+        submitScoreBtn.addEventListener('click', async () => {
+            const playerName = playerNameInput.value.trim();
+            if (playerName.length > 0) {
+                if (window.saveScore) {
+                    await window.saveScore(playerName, score);
+                    scoreSubmissionForm.style.display = 'none';
+                } else {
+                    console.error("Firebase saveScore function not available. Check Firebase initialization.");
+                    scoreSubmissionForm.style.display = 'none';
+                }
+            } else {
+                showConfirmationModal("Please enter your name!", () => {});
+            }
+        });
+
+
+        // Initial game setup when the window loads
+        window.onload = function () {
+            initializeGame();
+        };
+
+        // Handle window resizing to keep responsive
+        window.addEventListener('resize', () => {
+            // Re-adjust ball positions if necessary (for active balls)
+            balls.forEach(ball => {
+                if (ball.isActive) {
+                    // Ensure ball stays within main playfield, not plunger lane, when adjusting x
+                    const playfieldWidth = gameContainer.offsetWidth - PLUNGER_LANE_WIDTH - (WALL_THICKNESS * 2);
+                    ball.x = Math.max(WALL_THICKNESS, Math.min(ball.x, WALL_THICKNESS + playfieldWidth - BALL_SIZE));
+                    ball.y = Math.max(0, Math.min(ball.y, gameContainer.offsetHeight - BALL_SIZE));
+                    ball.element.style.left = ball.x + "px";
+                    ball.element.style.top = ball.y + "px";
+                }
+            });
+
+            leftFlipper.style.left = "20px";
+            // Recalculate right flipper position on resize
+            rightFlipper.style.right = "50px";
+
+            plunger.style.right = "15px";
+
+            // Update central bumper position on resize
+            centralBumper.style.top = (gameContainer.offsetHeight - FLIPPER_BOTTOM_OFFSET - FLIPPER_HEIGHT - CENTRAL_BUMPER_SIZE - 20) + "px";
+            centralBumper.style.left = ((gameContainer.offsetWidth - PLUNGER_LANE_WIDTH) / 2 - CENTRAL_BUMPER_SIZE / 2) + "px";
+        });
+
+    </script>
+</body>
+</html>

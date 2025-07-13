@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yahtzee Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #1a202c;
+            font-family: 'Inter', sans-serif;
+            color: #ffffff;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .yahtzee-game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #2d3748;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+            max-width: 600px;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #ecc94b;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        .dice-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .die {
+            width: 60px;
+            height: 60px;
+            background-color: #e0e0e0;
+            border: 3px solid #666;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.1s ease-in-out;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+            user-select: none;
+        }
+
+        .die.held {
+            background-color: #ffd700;
+            border-color: #cc0;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.7);
+            transform: translateY(-5px);
+        }
+
+        .roll-button {
+            padding: 15px 40px;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #fff;
+            background-color: #e53e3e;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            outline: none;
+            margin-bottom: 25px;
+        }
+
+        .roll-button:hover:not(:disabled) {
+            background-color: #c53030;
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        }
+        .roll-button:active:not(:disabled) {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .roll-button:disabled {
+            background-color: #a0aec0;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .yahtzee-message {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-align: center;
+            color: #fff;
+        }
+
+        .scorecard-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 8px;
+            margin-bottom: 25px;
+        }
+
+        .scorecard-table th, .scorecard-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-radius: 8px;
+        }
+
+        .scorecard-table th {
+            background-color: #4a5568;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #cbd5e0;
+        }
+
+        .scorecard-table td {
+            background-color: #2d3748;
+            font-size: 1rem;
+            color: #e2e8f0;
+        }
+
+        .scorecard-table td:last-child {
+            text-align: right;
+            font-weight: 700;
+            color: #68d391;
+        }
+
+        .scorecard-table td button {
+            padding: 8px 15px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #fff;
+            background-color: #5a67d8;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            outline: none;
+        }
+
+        .scorecard-table td button:hover:not(:disabled) {
+            background-color: #434190;
+            transform: translateY(-1px);
+        }
+        .scorecard-table td button:disabled {
+            background-color: #a0aec0;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .total-score {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #ecc94b;
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #3a475a;
+            border-radius: 10px;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 480px) {
+            .die {
+                width: 50px;
+                height: 50px;
+                font-size: 2rem;
+            }
+            .roll-button {
+                padding: 12px 30px;
+                font-size: 1.1rem;
+            }
+            .yahtzee-message {
+                font-size: 1rem;
+            }
+            .scorecard-table th, .scorecard-table td {
+                padding: 10px;
+                font-size: 0.9rem;
+            }
+            .scorecard-table td button {
+                padding: 6px 10px;
+                font-size: 0.8rem;
+            }
+            .total-score {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="yahtzee-game-container">
+        <h1>Yahtzee!</h1>
+        <h2 id="yahtzeeMessage" class="yahtzee-message">Roll the dice to start!</h2>
+        <div class="dice-container">
+            <div class="die" data-index="0">0</div>
+            <div class="die" data-index="1">0</div>
+            <div class="die" data-index="2">0</div>
+            <div class="die" data-index="3">0</div>
+            <div class="die" data-index="4">0</div>
+        </div>
+        <button id="rollDiceBtn" class="roll-button">Roll Dice (3 left)</button>
+
+        <table class="scorecard-table">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Score</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="yahtzeeScorecardBody">
+                <tr>
+                    <td>Aces (1s)</td>
+                    <td id="score-aces">0</td>
+                    <td><button data-category="aces">Score</button></td>
+                </tr>
+                <tr>
+                    <td>Twos (2s)</td>
+                    <td id="score-twos">0</td>
+                    <td><button data-category="twos">Score</button></td>
+                </tr>
+                <tr>
+                    <td>Threes (3s)</td>
+                    <td id="score-threes">0</td>
+                    <td><button data-category="threes">Score</button></td>
+                </tr>
+                <tr>
+                    <td>Fours (4s)</td>
+                    <td id="score-fours">0</td>
+                    <td><button data-category="fours">Score</button></td>
+                </tr>
+                <tr>
+                    <td>Fives (5s)</td>
+                    <td id="score-fives">0</td>
+                    <td><button data-category="fives">Score</button></td>
+                </tr>
+                <tr>
+                    <td>Sixes (6s)</td>
+                    <td id="score-sixes">0</td>
+                    <td><button data-category="sixes">Score</button></td>
+                </tr>
+                <tr>
+                    <td><strong>Upper Total</strong></td>
+                    <td id="score-upper-total">0</td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td><strong>Bonus (>=63 in Upper)</strong></td>
+                    <td id="score-bonus">0</td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>3 of a Kind</td>
+                    <td id="score-3-of-a-kind">0</td>
+                    <td><button data-category="3-of-a-kind">Score</button></td>
+                </tr>
+                <tr>
+                    <td>4 of a Kind</td>
+                    <td id="score-4-of-a-kind">0</td>
+                    <td><button data-category="4-of-a-kind">Score</button></td>
+                </tr>
+                <tr>
+                    <td>Full House (25)</td>
+                    <td id="score-full-house">0</td>
+                    <td><button data-category="full-house">Score</button></td>
+                </tr>
+                <tr>
+                    <td>Small Straight (30)</td>
+                    <td id="score-small-straight">0</td>
+                    <td><button data-category="small-straight">Score</button></td>
+                </tr>
+                <tr>
+                    <td>Large Straight (40)</td>
+                    <td id="score-large-straight">0</td>
+                    <td><button data-category="large-straight">Score</button></td>
+                </tr>
+                <tr>
+                    <td>Yahtzee (50)</td>
+                    <td id="score-yahtzee">0</td>
+                    <td><button data-category="yahtzee">Score</button></td>
+                </tr>
+                <tr>
+                    <td>Chance</td>
+                    <td id="score-chance">0</td>
+                    <td><button data-category="chance">Score</button></td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="total-score">
+            Final Score: <span id="totalScoreCell">0</span>
+        </div>
+        <a href="GameHub.html" class="roll-button" style="margin-top: 20px;">Back to Game Hub</a>
+    </div>
+
+    <script>
+        const yahtzeeDice = document.querySelectorAll('.die');
+        const rollDiceBtn = document.getElementById('rollDiceBtn');
+        const yahtzeeMessage = document.getElementById('yahtzeeMessage');
+        const yahtzeeScorecardBody = document.getElementById('yahtzeeScorecardBody');
+        const totalScoreCell = document.getElementById('totalScoreCell');
+
+        let yahtzeeDiceValues = [0, 0, 0, 0, 0];
+        let yahtzeeHeldDice = [false, false, false, false, false];
+        let yahtzeeRollsLeft = 3;
+        const YAHTZEE_MAX_ROUNDS = 13;
+        let yahtzeeRound = 1;
+
+        // Scorecard state
+        const yahtzeeScorecard = {
+            'aces': { score: 0, scored: false },
+            'twos': { score: 0, scored: false },
+            'threes': { score: 0, scored: false },
+            'fours': { score: 0, scored: false },
+            'fives': { score: 0, scored: false },
+            'sixes': { score: 0, scored: false },
+            '3-of-a-kind': { score: 0, scored: false },
+            '4-of-a-kind': { score: 0, scored: false },
+            'full-house': { score: 0, scored: false },
+            'small-straight': { score: 0, scored: false },
+            'large-straight': { score: 0, scored: false },
+            'yahtzee': { score: 0, scored: false },
+            'chance': { score: 0, scored: false }
+        };
+
+        function renderYahtzeeDice() {
+            yahtzeeDice.forEach((die, index) => {
+                die.textContent = yahtzeeDiceValues[index] === 0 ? '' : yahtzeeDiceValues[index];
+                if (yahtzeeHeldDice[index]) {
+                    die.classList.add('held');
+                } else {
+                    die.classList.remove('held');
+                }
+            });
+        }
+
+        function renderYahtzeeScorecard() {
+            let upperTotal = 0;
+            let grandTotal = 0;
+
+            for (const category in yahtzeeScorecard) {
+                const scoreId = `score-${category}`;
+                const scoreCell = document.getElementById(scoreId);
+                if (scoreCell) {
+                    scoreCell.textContent = yahtzeeScorecard[category].score;
+                }
+
+                const scoreButton = yahtzeeScorecardBody.querySelector(`button[data-category="${category}"]`);
+                if (scoreButton) {
+                    if (yahtzeeScorecard[category].scored) {
+                        scoreButton.disabled = true;
+                        scoreButton.textContent = 'Scored';
+                    } else {
+                        scoreButton.disabled = yahtzeeRollsLeft === 3 && yahtzeeRound === 1; // Disable at very start
+                    }
+                }
+
+                if (['aces', 'twos', 'threes', 'fours', 'fives', 'sixes'].includes(category)) {
+                    upperTotal += yahtzeeScorecard[category].score;
+                }
+                grandTotal += yahtzeeScorecard[category].score;
+            }
+
+            document.getElementById('score-upper-total').textContent = upperTotal;
+            if (upperTotal >= 63) {
+                document.getElementById('score-bonus').textContent = 35;
+                grandTotal += 35;
+            } else {
+                document.getElementById('score-bonus').textContent = 0;
+            }
+            totalScoreCell.textContent = grandTotal;
+        }
+
+        function rollYahtzeeDice() {
+            if (yahtzeeRollsLeft > 0) {
+                for (let i = 0; i < 5; i++) {
+                    if (!yahtzeeHeldDice[i]) {
+                        yahtzeeDiceValues[i] = Math.floor(Math.random() * 6) + 1;
+                    }
+                }
+                yahtzeeRollsLeft--;
+                renderYahtzeeDice();
+                yahtzeeMessage.textContent = `Rolls left: ${yahtzeeRollsLeft}. Select a category to score or roll again!`;
+                rollDiceBtn.textContent = `Roll Dice (${yahtzeeRollsLeft} left)`;
+
+                if (yahtzeeRollsLeft === 0) {
+                    rollDiceBtn.disabled = true;
+                    yahtzeeMessage.textContent = `No rolls left. Please select a category to score.`;
+                }
+                // Enable score buttons after the first roll
+                yahtzeeScorecardBody.querySelectorAll('button').forEach(button => {
+                    const category = button.dataset.category;
+                    if (category && !yahtzeeScorecard[category].scored) {
+                        button.disabled = false;
+                    }
+                });
+            }
+        }
+
+        function toggleYahtzeeDieHold(index) {
+            if (yahtzeeRollsLeft < 3) { // Only allow holding after at least one roll
+                yahtzeeHeldDice[index] = !yahtzeeHeldDice[index];
+                renderYahtzeeDice();
+            }
+        }
+
+        function calculateCategoryScore(categoryId, dice) {
+            const counts = {};
+            dice.forEach(die => {
+                counts[die] = (counts[die] || 0) + 1;
+            });
+            const values = Object.keys(counts).map(Number).sort((a, b) => a - b);
+            const sumAllDice = dice.reduce((sum, val) => sum + val, 0);
+
+            switch (categoryId) {
+                case 'aces': return counts[1] * 1 || 0;
+                case 'twos': return counts[2] * 2 || 0;
+                case 'threes': return counts[3] * 3 || 0;
+                case 'fours': return counts[4] * 4 || 0;
+                case 'fives': return counts[5] * 5 || 0;
+                case 'sixes': return counts[6] * 6 || 0;
+                case '3-of-a-kind':
+                    for (const val in counts) {
+                        if (counts[val] >= 3) return sumAllDice;
+                    }
+                    return 0;
+                case '4-of-a-kind':
+                    for (const val in counts) {
+                        if (counts[val] >= 4) return sumAllDice;
+                    }
+                    return 0;
+                case 'full-house':
+                    const hasThree = Object.values(counts).some(c => c === 3);
+                    const hasTwo = Object.values(counts).some(c => c === 2);
+                    return (hasThree && hasTwo) ? 25 : 0;
+                case 'small-straight': // Sequence of 4
+                    const distinctSorted = Array.from(new Set(dice)).sort((a,b)=>a-b);
+                    if (distinctSorted.length >= 4) {
+                        for(let i=0; i <= distinctSorted.length - 4; i++) {
+                            if (distinctSorted[i+1] === distinctSorted[i] + 1 &&
+                                distinctSorted[i+2] === distinctSorted[i] + 2 &&
+                                distinctSorted[i+3] === distinctSorted[i] + 3) {
+                                return 30;
+                            }
+                        }
+                    }
+                    return 0;
+                case 'large-straight': // Sequence of 5
+                    const distinctSortedLarge = Array.from(new Set(dice)).sort((a,b)=>a-b);
+                    if (distinctSortedLarge.length >= 5) {
+                        if (distinctSortedLarge[0] === 1 && distinctSortedLarge[1] === 2 && distinctSortedLarge[2] === 3 && distinctSortedLarge[3] === 4 && distinctSortedLarge[4] === 5) return 40;
+                        if (distinctSortedLarge[0] === 2 && distinctSortedLarge[1] === 3 && distinctSortedLarge[2] === 4 && distinctSortedLarge[3] === 5 && distinctSortedLarge[4] === 6) return 40;
+                    }
+                    return 0;
+                case 'yahtzee':
+                    for (const val in counts) {
+                        if (counts[val] === 5) return 50;
+                    }
+                    return 0;
+                case 'chance':
+                    return sumAllDice;
+                default:
+                    return 0;
+            }
+        }
+
+        function scoreCategory(event) {
+            const button = event.target;
+            const categoryId = button.dataset.category;
+
+            if (categoryId && !yahtzeeScorecard[categoryId].scored) {
+                const score = calculateCategoryScore(categoryId, yahtzeeDiceValues);
+                yahtzeeScorecard[categoryId].score = score;
+                yahtzeeScorecard[categoryId].scored = true;
+                renderYahtzeeScorecard();
+
+                yahtzeeRound++;
+                if (yahtzeeRound <= YAHTZEE_MAX_ROUNDS) {
+                    yahtzeeDiceValues = [0, 0, 0, 0, 0];
+                    yahtzeeHeldDice = [false, false, false, false, false];
+                    yahtzeeRollsLeft = 3;
+                    rollDiceBtn.disabled = false;
+                    rollDiceBtn.textContent = `Roll Dice (3 left)`;
+                    yahtzeeMessage.textContent = "Roll the dice for the next round!";
+                    renderYahtzeeDice();
+                    // Disable all score buttons until next roll
+                    yahtzeeScorecardBody.querySelectorAll('button').forEach(btn => {
+                        const btnCategory = btn.dataset.category;
+                        if (btnCategory && !yahtzeeScorecard[btnCategory].scored) {
+                            btn.disabled = true;
+                        }
+                    });
+                } else {
+                    endYahtzeeGame();
+                }
+            }
+        }
+
+        function endYahtzeeGame() {
+            rollDiceBtn.disabled = true;
+            yahtzeeDice.forEach(die => die.removeEventListener('click', toggleYahtzeeDieHold));
+            yahtzeeScorecardBody.querySelectorAll('button').forEach(button => button.disabled = true);
+            yahtzeeMessage.textContent = `Game Over! Final Score: ${totalScoreCell.textContent}`;
+            alert(`Yahtzee Game Over! Your final score is: ${totalScoreCell.textContent}`);
+        }
+
+        // Yahtzee Event Listeners
+        rollDiceBtn.addEventListener('click', rollYahtzeeDice);
+        yahtzeeDice.forEach((die, index) => {
+            die.addEventListener('click', () => toggleYahtzeeDieHold(index));
+        });
+        yahtzeeScorecardBody.addEventListener('click', scoreCategory);
+
+        // Initial render
+        renderYahtzeeDice();
+        renderYahtzeeScorecard();
+    </script>
+</body>
+</html>

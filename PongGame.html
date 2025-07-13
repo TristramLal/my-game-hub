@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pong Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #1a202c;
+            font-family: 'Inter', sans-serif;
+            color: #ffffff;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #pongCanvas {
+            background-color: #000;
+            border: 3px solid #fff;
+            border-radius: 10px;
+            display: block;
+            width: 100%;
+            max-width: 800px; /* Limit canvas width */
+            height: 400px;
+            margin-bottom: 20px;
+            box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.1), 0 0 15px rgba(0, 0, 0, 0.7);
+            touch-action: none;
+        }
+
+        .pong-controls-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 800px; /* Match canvas width */
+            margin-top: 10px;
+        }
+
+        .message {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .win-message {
+            color: #68d391;
+        }
+
+        .start-button, .play-again-button {
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            outline: none;
+        }
+
+        .start-button {
+            background-color: #48bb78;
+        }
+        .start-button:hover {
+            background-color: #38a169;
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        }
+        .start-button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .play-again-button {
+            background-color: #4299e1;
+        }
+        .play-again-button:hover {
+            background-color: #3182ce;
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        }
+        .play-again-button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .controls-info {
+            margin-top: 25px;
+            text-align: center;
+            font-size: 0.95rem;
+            color: #cbd5e0;
+            line-height: 1.6;
+        }
+
+        .controls-info span {
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .game-mode-selection, .cpu-difficulty-selection {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 20px;
+            background-color: #3a475a;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .game-mode-selection label, .cpu-difficulty-selection label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #e2e8f0;
+            transition: color 0.2s ease;
+        }
+
+        .game-mode-selection label:hover, .cpu-difficulty-selection label:hover {
+            color: #fff;
+        }
+
+        .game-mode-selection input[type="radio"], .cpu-difficulty-selection input[type="radio"] {
+            margin-right: 8px;
+            accent-color: #48bb78;
+            transform: scale(1.2);
+        }
+
+        /* Responsive adjustments for smaller screens */
+        @media (max-width: 600px) {
+            #pongCanvas {
+                height: 300px;
+            }
+            .message {
+                font-size: 1rem;
+            }
+            .start-button, .play-again-button {
+                padding: 10px 20px;
+                font-size: 1rem;
+            }
+            .game-mode-selection, .cpu-difficulty-selection {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .game-mode-selection label, .cpu-difficulty-selection label {
+                font-size: 0.9rem;
+            }
+            .controls-info {
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-hub-container">
+        <h1>Pong Game</h1>
+        <canvas id="pongCanvas"></canvas>
+        <div class="pong-controls-area">
+            <div id="pongMessage" class="message">Click Start to Play!</div>
+            <div class="game-mode-selection">
+                <label>
+                    <input type="radio" name="pongMode" value="1player" id="pong1Player" checked> 1 Player (vs CPU)
+                </label>
+                <label>
+                    <input type="radio" name="pongMode" value="2player" id="pong2Player"> 2 Player
+                </label>
+            </div>
+            <div class="cpu-difficulty-selection">
+                <label>
+                    <input type="radio" name="cpuDifficulty" value="easy" id="cpuEasy" checked> Easy
+                </label>
+                <label>
+                    <input type="radio" name="cpuDifficulty" value="medium" id="cpuMedium"> Medium
+                </label>
+                <label>
+                    <input type="radio" name="cpuDifficulty" value="hard" id="cpuHard"> Hard
+                </label>
+            </div>
+            <button id="pongStartButton" class="start-button">Start Game</button>
+            <button id="pongPlayAgainButton" class="play-again-button" style="display: none;">Play Again</button>
+            <div class="controls-info">
+                <p>Player 1 (Left Paddle): Use <span>W</span> and <span>S</span> keys.</p>
+                <p>Player 2 (Right Paddle / CPU): Use <span>Arrow Up</span> and <span>Arrow Down</span> keys.</p>
+                <p>On touch devices, drag vertically on the left/right half of the screen to control paddles.</p>
+            </div>
+        </div>
+        <a href="GameHub.html" class="play-again-button" style="margin-top: 20px;">Back to Game Hub</a>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('pongCanvas');
+        const ctx = canvas.getContext('2d');
+        const pongMessage = document.getElementById('pongMessage');
+        const startButton = document.getElementById('pongStartButton');
+        const playAgainButton = document.getElementById('pongPlayAgainButton');
+        const pong1PlayerRadio = document.getElementById('pong1Player');
+        const pong2PlayerRadio = document.getElementById('pong2Player');
+        const cpuEasyRadio = document.getElementById('cpuEasy');
+        const cpuMediumRadio = document.getElementById('cpuMedium');
+        const cpuHardRadio = document.getElementById('cpuHard');
+        const gameModeSelection = document.querySelector('.game-mode-selection');
+        const cpuDifficultySelection = document.querySelector('.cpu-difficulty-selection');
+
+        let gameRunning = false;
+        let gameMode = '1player'; // Default to 1-player
+        let cpuDifficulty = 'medium'; // Default CPU difficulty
+
+        let player1Score = 0;
+        let player2Score = 0;
+        const WINNING_SCORE = 5;
+
+        // Paddle dimensions
+        const PADDLE_WIDTH = 10;
+        const PADDLE_HEIGHT = 100;
+        const PADDLE_SPEED = 6; // pixels per frame
+
+        // Ball dimensions and speed
+        const BALL_SIZE = 10;
+        let ballSpeedX;
+        let ballSpeedY;
+        const INITIAL_BALL_SPEED = 5;
+
+        // Game objects
+        let player1 = {
+            x: 0,
+            y: (canvas.height - PADDLE_HEIGHT) / 2,
+            width: PADDLE_WIDTH,
+            height: PADDLE_HEIGHT,
+            color: '#4299e1', // Blue
+            dy: 0 // Change in y-position (for movement)
+        };
+
+        let player2 = {
+            x: canvas.width - PADDLE_WIDTH,
+            y: (canvas.height - PADDLE_HEIGHT) / 2,
+            width: PADDLE_WIDTH,
+            height: PADDLE_HEIGHT,
+            color: '#e53e3e', // Red
+            dy: 0 // Change in y-position (for movement)
+        };
+
+        let ball = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            size: BALL_SIZE,
+            color: '#68d391' // Green
+        };
+
+        function resetGame() {
+            player1Score = 0;
+            player2Score = 0;
+            resetBall();
+            player1.y = (canvas.height - PADDLE_HEIGHT) / 2;
+            player2.y = (canvas.height - PADDLE_HEIGHT) / 2;
+            pongMessage.textContent = 'Click Start to Play!';
+            pongMessage.classList.remove('win-message');
+            startButton.style.display = 'block';
+            playAgainButton.style.display = 'none';
+            gameModeSelection.style.display = 'flex';
+            cpuDifficultySelection.style.display = 'flex';
+            gameRunning = false;
+        }
+
+        function resetBall() {
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            // Random initial direction
+            ballSpeedX = (Math.random() > 0.5 ? 1 : -1) * INITIAL_BALL_SPEED;
+            ballSpeedY = (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 2 + 1); // Slight vertical randomness
+        }
+
+        function draw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw paddles
+            ctx.fillStyle = player1.color;
+            ctx.fillRect(player1.x, player1.y, player1.width, player1.height);
+
+            ctx.fillStyle = player2.color;
+            ctx.fillRect(player2.x, player2.y, player2.width, player2.height);
+
+            // Draw ball
+            ctx.fillStyle = ball.color;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.size / 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw scores
+            ctx.fillStyle = '#fff';
+            ctx.font = '30px "Inter", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(player1Score, canvas.width / 4, 40);
+            ctx.fillText(player2Score, canvas.width * 3 / 4, 40);
+
+            // Draw dashed line in the middle
+            ctx.beginPath();
+            ctx.setLineDash([10, 10]);
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.strokeStyle = '#888';
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset line dash
+        }
+
+        function update() {
+            if (!gameRunning) return;
+
+            // Update ball position
+            ball.x += ballSpeedX;
+            ball.y += ballSpeedY;
+
+            // Ball collision with top/bottom walls
+            if (ball.y + ball.size / 2 > canvas.height || ball.y - ball.size / 2 < 0) {
+                ballSpeedY *= -1; // Reverse vertical direction
+            }
+
+            // Ball collision with paddles
+            // Player 1 (left paddle)
+            if (ball.x - ball.size / 2 < player1.x + player1.width &&
+                ball.y + ball.size / 2 > player1.y &&
+                ball.y - ball.size / 2 < player1.y + player1.height &&
+                ballSpeedX < 0) { // Only if moving towards player 1
+                ballSpeedX *= -1.1; // Reverse and increase speed slightly
+                // Adjust ball angle based on where it hit the paddle
+                let collidePoint = ball.y - (player1.y + player1.height / 2);
+                collidePoint = collidePoint / (player1.height / 2);
+                let angleRad = (Math.PI / 4) * collidePoint; // Max 45 degrees
+                ballSpeedY = INITIAL_BALL_SPEED * Math.sin(angleRad);
+                ballSpeedX = Math.abs(ballSpeedX); // Ensure it moves right
+            }
+
+            // Player 2 (right paddle)
+            if (ball.x + ball.size / 2 > player2.x &&
+                ball.y + ball.size / 2 > player2.y &&
+                ball.y - ball.size / 2 < player2.y + player2.height &&
+                ballSpeedX > 0) { // Only if moving towards player 2
+                ballSpeedX *= -1.1; // Reverse and increase speed slightly
+                // Adjust ball angle based on where it hit the paddle
+                let collidePoint = ball.y - (player2.y + player2.height / 2);
+                collidePoint = collidePoint / (player2.height / 2);
+                let angleRad = (Math.PI / 4) * collidePoint; // Max 45 degrees
+                ballSpeedY = INITIAL_BALL_SPEED * Math.sin(angleRad);
+                ballSpeedX = -Math.abs(ballSpeedX); // Ensure it moves left
+            }
+
+            // Ball goes out of bounds (score)
+            if (ball.x < 0) {
+                player2Score++;
+                checkScore();
+                if (gameRunning) resetBall(); // Only reset if game hasn't ended
+            } else if (ball.x > canvas.width) {
+                player1Score++;
+                checkScore();
+                if (gameRunning) resetBall(); // Only reset if game hasn't ended
+            }
+
+            // Paddle movement
+            player1.y += player1.dy;
+            player2.y += player2.dy;
+
+            // Prevent paddles from going out of bounds
+            player1.y = Math.max(0, Math.min(player1.y, canvas.height - PADDLE_HEIGHT));
+            player2.y = Math.max(0, Math.min(player2.y, canvas.height - PADDLE_HEIGHT));
+
+            // CPU AI for Player 2 (if 1-player mode)
+            if (gameMode === '1player') {
+                let cpuTargetY = ball.y - player2.height / 2;
+                let cpuSpeed;
+
+                if (cpuDifficulty === 'easy') {
+                    cpuSpeed = 2;
+                } else if (cpuDifficulty === 'medium') {
+                    cpuSpeed = 4;
+                } else { // hard
+                    cpuSpeed = 6; // Same as player speed for challenging AI
+                }
+
+                if (player2.y < cpuTargetY) {
+                    player2.y += cpuSpeed;
+                } else if (player2.y > cpuTargetY) {
+                    player2.y -= cpuSpeed;
+                }
+            }
+        }
+
+        function checkScore() {
+            if (player1Score >= WINNING_SCORE) {
+                pongMessage.textContent = 'Player 1 Wins!';
+                pongMessage.classList.add('win-message');
+                endGame();
+            } else if (player2Score >= WINNING_SCORE) {
+                if (gameMode === '1player') {
+                    pongMessage.textContent = 'CPU Wins!';
+                } else {
+                    pongMessage.textContent = 'Player 2 Wins!';
+                }
+                pongMessage.classList.add('win-message');
+                endGame();
+            }
+        }
+
+        function endGame() {
+            gameRunning = false;
+            startButton.style.display = 'none';
+            playAgainButton.style.display = 'block';
+            gameModeSelection.style.display = 'flex';
+            cpuDifficultySelection.style.display = 'flex';
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Event Listeners for keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (gameRunning) {
+                switch (e.key) {
+                    case 'w':
+                        player1.dy = -PADDLE_SPEED;
+                        break;
+                    case 's':
+                        player1.dy = PADDLE_SPEED;
+                        break;
+                    case 'ArrowUp':
+                        if (gameMode === '2player') player2.dy = -PADDLE_SPEED;
+                        break;
+                    case 'ArrowDown':
+                        if (gameMode === '2player') player2.dy = PADDLE_SPEED;
+                        break;
+                }
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (gameRunning) {
+                switch (e.key) {
+                    case 'w':
+                    case 's':
+                        player1.dy = 0;
+                        break;
+                    case 'ArrowUp':
+                    case 'ArrowDown':
+                        if (gameMode === '2player') player2.dy = 0;
+                        break;
+                }
+            }
+        });
+
+        // Touch controls
+        let touchStartY1 = -1; // Y-coordinate of the touch start for player 1
+        let touchStartY2 = -1; // Y-coordinate of the touch start for player 2
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Prevent scrolling
+            if (!gameRunning) return;
+
+            for (let i = 0; i < e.touches.length; i++) {
+                const touch = e.touches[i];
+                if (touch.clientX < canvas.width / 2) { // Left half for Player 1
+                    touchStartY1 = touch.clientY;
+                } else if (gameMode === '2player' || gameMode === '1player') { // Right half for Player 2 / CPU
+                    touchStartY2 = touch.clientY;
+                }
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault(); // Prevent scrolling
+            if (!gameRunning) return;
+
+            for (let i = 0; i < e.touches.length; i++) {
+                const touch = e.touches[i];
+                if (touch.clientX < canvas.width / 2 && touchStartY1 !== -1) { // Player 1
+                    const deltaY = touch.clientY - touchStartY1;
+                    if (Math.abs(deltaY) > 5) { // Only move if significant drag
+                        player1.dy = deltaY > 0 ? PADDLE_SPEED : -PADDLE_SPEED;
+                    } else {
+                        player1.dy = 0;
+                    }
+                    touchStartY1 = touch.clientY; // Update for continuous movement
+                } else if ((gameMode === '2player' || gameMode === '1player') && touchStartY2 !== -1) { // Player 2 / CPU
+                    const deltaY = touch.clientY - touchStartY2;
+                    if (Math.abs(deltaY) > 5) {
+                        player2.dy = deltaY > 0 ? PADDLE_SPEED : -PADDLE_SPEED;
+                    } else {
+                        player2.dy = 0;
+                    }
+                    touchStartY2 = touch.clientY;
+                }
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault(); // Prevent scrolling
+            if (!gameRunning) return;
+
+            // Check which fingers were lifted
+            let player1FingerLifted = true;
+            let player2FingerLifted = true;
+
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                if (touch.clientX < canvas.width / 2) {
+                    player1FingerLifted = true;
+                } else {
+                    player2FingerLifted = true;
+                }
+            }
+
+            // If no fingers remain, stop movement
+            if (player1FingerLifted) {
+                player1.dy = 0;
+                touchStartY1 = -1; // Reset touch start Y
+            }
+            if (player2FingerLifted) {
+                player2.dy = 0;
+                touchStartY2 = -1; // Reset touch start Y
+            }
+        });
+
+
+        // Game mode and difficulty selection
+        pong1PlayerRadio.addEventListener('change', () => {
+            gameMode = '1player';
+            cpuDifficultySelection.style.display = 'flex'; // Show difficulty options for 1-player
+        });
+
+        pong2PlayerRadio.addEventListener('change', () => {
+            gameMode = '2player';
+            cpuDifficultySelection.style.display = 'none'; // Hide difficulty options for 2-player
+        });
+
+        cpuEasyRadio.addEventListener('change', () => cpuDifficulty = 'easy');
+        cpuMediumRadio.addEventListener('change', () => cpuDifficulty = 'medium');
+        cpuHardRadio.addEventListener('change', () => cpuDifficulty = 'hard');
+
+        startButton.addEventListener('click', () => {
+            gameRunning = true;
+            pongMessage.textContent = 'Game Started!';
+            startButton.style.display = 'none';
+            playAgainButton.style.display = 'none';
+            gameModeSelection.style.display = 'none';
+            cpuDifficultySelection.style.display = 'none';
+            resetBall(); // Reset ball position and speed at game start
+            gameLoop();
+        });
+
+        playAgainButton.addEventListener('click', () => {
+            resetGame();
+        });
+
+        // Initial setup
+        resetGame();
+        draw(); // Draw initial state
+
+        // Adjust canvas size on window resize
+        window.addEventListener('resize', () => {
+            // No need to reset canvas.width/height if using CSS width:100% and fixed height
+            // The canvas drawing will adapt to the CSS dimensions
+            draw();
+        });
+
+    </script>
+</body>
+</html>
