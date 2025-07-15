@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pin Ball Leaderboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #333;
+            font-family: 'Inter', sans-serif;
+            color: #fff;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        #leaderboardContainer {
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            width: 90%; /* Responsive width */
+            max-width: 500px; /* Max width for larger screens */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-sizing: border-box;
+            margin-bottom: 20px; /* Space for the back button */
+        }
+
+        #leaderboardContainer h2 {
+            font-size: 2.5em;
+            color: #48bb78;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(72, 187, 120, 0.7);
+        }
+
+        #leaderboardList {
+            list-style: none;
+            padding: 0;
+            width: 100%;
+        }
+
+        #leaderboardList li {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #555;
+            font-size: 1.2em;
+            color: #cbd5e0;
+        }
+
+        #leaderboardList li:last-child {
+            border-bottom: none;
+        }
+
+        .back-button {
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #fff;
+            background-color: #5a67d8; /* Indigo */
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            outline: none;
+            text-decoration: none; /* For link styling */
+            display: inline-block; /* For link styling */
+            margin-top: 10px;
+        }
+
+        .back-button:hover {
+            background-color: #434190;
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        }
+        .back-button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        @media (max-width: 600px) {
+            #leaderboardContainer h2 {
+                font-size: 2em;
+            }
+            #leaderboardList li {
+                font-size: 1em;
+                padding: 8px 0;
+            }
+            .back-button {
+                padding: 10px 25px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="leaderboardContainer">
+        <h2>Pin Ball Leaderboard</h2>
+        <ul id="leaderboardList">
+            <!-- Leaderboard items will be inserted here by JavaScript -->
+            <li>Loading scores...</li>
+        </ul>
+    </div>
+
+    <!-- Back to Game Hub Button -->
+    <a href="index.html" class="back-button">Back to Game Hub</a>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, query, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase variables (global for this module)
+        let app;
+        let db;
+        let auth;
+        let userId;
+        let appId;
+
+        // Initialize Firebase
+        try {
+            // Hardcoded Firebase Config
+            const firebaseConfig = {
+              apiKey: "AIzaSyASrUkZbSciDC9BnLWfpwO6j573aWtsbBc",
+              authDomain: "game-hub-af102.firebaseapp.com",
+              projectId: "game-hub-af102",
+              storageBucket: "game-hub-af102.firebasestorage.app",
+              messagingSenderId: "760374485837",
+              appId: "1:760374485837:web:606964ccff80a7e41118d04",
+              measurementId: "G-WD046XE1QV"
+            };
+
+            appId = firebaseConfig.projectId; // Use projectId as appId for consistency with Firestore path
+
+            if (Object.keys(firebaseConfig).length > 0) {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        console.log("Firebase authenticated. User ID:", userId);
+                        setupLeaderboardListener(); // Call listener once authenticated
+                    } else {
+                        // Sign in anonymously if no user is authenticated
+                        try {
+                            await signInAnonymously(auth);
+                            console.log("Signed in anonymously for leaderboard view.");
+                        } catch (error) {
+                            console.error("Firebase anonymous sign-in failed:", error);
+                        }
+                    }
+                });
+            } else {
+                console.warn("Firebase config not found. Leaderboard will not be available.");
+                document.getElementById('leaderboardList').innerHTML = '<li>Firebase not configured. Leaderboard unavailable.</li>';
+            }
+        } catch (e) {
+            console.error("Error initializing Firebase:", e);
+            document.getElementById('leaderboardList').innerHTML = '<li>Error initializing Firebase.</li>';
+        }
+
+        // Function to set up real-time leaderboard listener
+        function setupLeaderboardListener() {
+            if (!db || !appId) {
+                console.error("Firestore DB or App ID not available to set up leaderboard listener.");
+                return;
+            }
+            const scoresCollectionRef = collection(db, `artifacts/${appId}/public/data/pinball_scores`);
+            const q = query(scoresCollectionRef, orderBy("score", "desc"), limit(10)); // Top 10 scores
+
+            console.log("Attempting to set up Firestore leaderboard listener for path:", `artifacts/${appId}/public/data/pinball_scores`);
+
+            onSnapshot(q, (snapshot) => {
+                console.log("Firestore snapshot received. Number of documents:", snapshot.size);
+                const leaderboardList = document.getElementById('leaderboardList');
+                leaderboardList.innerHTML = ''; // Clear current list
+
+                if (snapshot.empty) {
+                    leaderboardList.innerHTML = '<li>No scores yet. Be the first!</li>';
+                    console.log("Leaderboard snapshot is empty.");
+                    return;
+                }
+
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const listItem = document.createElement('li');
+                    listItem.innerHTML = `<span>${data.playerName}</span><span>${data.score}</span>`;
+                    leaderboardList.appendChild(listItem);
+                });
+                console.log("Leaderboard updated with new scores.");
+            }, (error) => {
+                console.error("Error fetching leaderboard: ", error);
+                leaderboardList.innerHTML = '<li>Error loading leaderboard. Please check console for details.</li>';
+            });
+        }
+
+        // Initial setup when the window loads
+        window.onload = function () {
+            // Firebase initialization and listener setup are handled by the module script
+        };
+    </script>
+</body>
+</html>
